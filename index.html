@@ -3,6 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console Espectro V2.0 - Alma Digital Studio</title>
+    <style>
+        :root { --primary: #0056b3; --bg: #f0f2f5; --text: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 10px; }
+        .header { text-align: center; margin-bottom: 15px; border-bottom: 3px solid var(--primary); padding-bottom: 5px; width: 100%; max-width: 600px; }
+        .controls { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; width: 100%; max-width: 800px; }
+        .grid-container { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .grid { display: grid; gap: 5px; margin: 0 auto; }
+        .cell { width: 45px; height: 45px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+        .cell.fixed { cursor: default; border: 2px solid #444; position: relative; }
+        .cell.fixed::after { content: "•"; position: absolute; color: rgba(0,0,0,0.2); font-size: 20px; }
+        .palette { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+        .color-btn { width: 38px; height: 38px; border-radius: 50%; border: 2px solid white; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .color-btn.active { transform: scale(1.15); border-color: #333; }
+        .msg { margin-top: 15px; font-weight: bold; color: #28a745; min-height: 24px; }
+        select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; }
+        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 style="margin:0; font-size: 1.5rem;">🧩 Console Espectro V2.0</h1>
+    <small>Foco em Acolhimento e TEA</small>
+</div>
+
+<div class="controls">
+    <div>
+        <label>Modo:</label>
+        <select id="gameMode" onchange="toggleSizeOptions()">
+            <option value="linear">Linear (1xN)</option>
+            <option value="grade">Grade (NxN)</option>
+            <option value="simetria">Simetria Radial</option>
+        </select>
+    </div>
+    <div>
+        <label>Tamanho:</label>
+        <select id="size"></select>
+    </div>
+    <div>
+        <label>Acolhimento:</label>
+        <select id="dicas">
+            <option value="0.9">Máximo (Quase tudo)</option>
+            <option value="0.5" selected>Médio (Metade)</option>
+            <option value="0.1">Mínimo (Desafio)</option>
+        </select>
+    </div>
+    <button onclick="initGame()">GERAR</button>
+</div>
+
+<div class="grid-container"><div id="grid" class="grid"></div></div>
+<div id="msg" class="msg"></div>
+<div class="palette" id="palette"></div>
+
+<script>
+    const colors = ['#FF4136', '#2ECC40', '#0074D9', '#FFDC00', '#B10DC9', '#FF851B', '#7FDBFF', '#39CCCC', '#F012BE', '#01FF70'];
+    let selColor = colors[0];
+    let solution = [];
+
+    function toggleSizeOptions() {
+        const mode = document.getElementById('gameMode').value;
+        const sizeSelect = document.getElementById('size');
+        sizeSelect.innerHTML = "";
+        
+        let options = mode === 'simetria' ? [3, 5] : [3, 4, 5, 8, 10];
+        options.forEach(opt => {
+            const el = document.createElement('option');
+            el.value = opt; el.textContent = mode === 'linear' ? `1x${opt}` : `${opt}x${opt}`;
+            sizeSelect.appendChild(el);
+        });
+    }
+
+    function initGame() {
+        const mode = document.getElementById('gameMode').value;
+        const size = parseInt(document.getElementById('size').value);
+        const dicasPct = parseFloat(document.getElementById('dicas').value);
+        const grid = document.getElementById('grid');
+        document.getElementById('msg').innerText = "";
+        grid.innerHTML = "";
+        
+        const rows = mode === 'linear' ? 1 : size;
+        grid.style.gridTemplateColumns = `repeat(${size}, 45px)`;
+        solution = Array.from({length: rows}, () => Array(size).fill(''));
+
+        // Lógica de Preenchimento
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<size; c++) {
+                if(mode === 'simetria') {
+                    let dist = Math.max(Math.abs(r - Math.floor(size/2)), Math.abs(c - Math.floor(size/2)));
+                    solution[r][c] = colors[dist % colors.length];
+                } else {
+                    solution[r][c] = colors[(r + c) % colors.length];
+                }
+                
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                if(Math.random() < dicasPct) {
+                    cell.style.backgroundColor = solution[r][c];
+                    cell.classList.add('fixed');
+                }
+                cell.onclick = () => { if(!cell.classList.contains('fixed')) { cell.style.backgroundColor = selColor; check(); }};
+                grid.appendChild(cell);
+            }
+        }
+    }
+
+    function check() {
+        const cells = document.querySelectorAll('.cell');
+        const solFlat = solution.flat();
+        let win = true;
+        cells.forEach((cell, i) => {
+            let bg = cell.style.backgroundColor;
+            if(!bg || rgbToHex(bg) !== solFlat[i]) win = false;
+        });
+        if(win) document.getElementById('msg').innerText = "✨ CONCLUÍDO COM SUCESSO! ✨";
+    }
+
+    function rgbToHex(rgb) {
+        if(!rgb) return "";
+        const parts = rgb.match(/\d+/g);
+        return "#" + parts.map(x => parseInt(x).toString(16).padStart(2, '0').toUpperCase()).join('');
+    }
+
+    const pal = document.getElementById('palette');
+    colors.forEach((c, i) => {
+        const b = document.createElement('div'); b.className = 'color-btn'; b.style.backgroundColor = c;
+        if(i===0) b.classList.add('active');
+        b.onclick = () => { document.querySelectorAll('.color-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); selColor = c; };
+        pal.appendChild(b);
+    });
+
+    toggleSizeOptions();
+    initGame();
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Console Espectro V1.0 - Alma Digital Studio</title>
     <style>
         :root { --primary: #0056b3; --bg: #f8f9fa; --text: #333; }
