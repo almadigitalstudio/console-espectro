@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console Espectro V1.0 - Alma Digital Studio</title>
+    <style>
+        :root { --primary: #0056b3; --bg: #f8f9fa; --text: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; margin: 0; padding: 20px; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 3px solid var(--primary); padding-bottom: 10px; width: 100%; max-width: 600px; }
+        .controls { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-bottom: 25px; width: 100%; max-width: 800px; }
+        .grid-container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 2px solid #eee; }
+        .grid { display: grid; gap: 6px; margin: 0 auto; transition: all 0.3s ease; }
+        .cell { width: 48px; height: 48px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; transition: transform 0.1s, background-color 0.2s; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .cell:active { transform: scale(0.9); }
+        .cell.fixed { cursor: default; border: 2px solid #555; opacity: 0.95; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); position: relative; }
+        .cell.fixed::after { content: "•"; position: absolute; color: rgba(0,0,0,0.3); font-size: 24px; }
+        .palette { display: flex; gap: 12px; margin-top: 25px; background: white; padding: 15px; border-radius: 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 1px solid #ddd; }
+        .color-btn { width: 42px; height: 42px; border-radius: 50%; border: 3px solid white; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .color-btn.active { transform: scale(1.25); border-color: #333; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+        .message { margin-top: 20px; font-size: 1.2rem; font-weight: bold; color: #28a745; height: 30px; }
+        select, button { padding: 10px 15px; border-radius: 8px; border: 1px solid #ccc; font-size: 15px; cursor: pointer; background: white; }
+        button { background: var(--primary); color: white; border: none; font-weight: bold; transition: background 0.3s; }
+        button:hover { background: #004494; }
+        label { font-weight: bold; margin-right: 5px; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1 style="margin:0;">🧩 Console Espectro V1.0</h1>
+    <span style="font-weight:bold; color: #666;">Alma Digital Studio | Acolhimento & Lógica</span>
+</div>
+
+<div class="controls">
+    <div>
+        <label>Formato:</label>
+        <select id="gridMode" onchange="newGame()">
+            <option value="linear">Modo Linear (1xN)</option>
+            <option value="quadrado" selected>Modo Grade (NxN)</option>
+        </select>
+    </div>
+    <div>
+        <label>Tamanho:</label>
+        <select id="gridSize" onchange="newGame()">
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="8">8</option>
+            <option value="10" selected>10</option>
+        </select>
+    </div>
+    <div>
+        <label>Acolhimento:</label>
+        <select id="acolhimento" onchange="newGame()">
+            <option value="99">Máximo (99% Dicas)</option>
+            <option value="80">Alto (80% Dicas)</option>
+            <option value="50">Médio (50% Dicas)</option>
+            <option value="20">Desafio (20% Dicas)</option>
+        </select>
+    </div>
+    <button onclick="newGame()">NOVO DESAFIO</button>
+</div>
+
+<div class="grid-container">
+    <div id="grid" class="grid"></div>
+</div>
+
+<div id="message" class="message"></div>
+
+<div class="palette" id="palette"></div>
+
+<script>
+    // Cores idênticas ao padrão aprovado por Carlos Alberto
+    const colors = ['#FF4136', '#2ECC40', '#0074D9', '#FFDC00', '#B10DC9', '#FF851B', '#7FDBFF', '#39CCCC', '#F012BE', '#01FF70'];
+    let selectedColor = colors[0];
+    let currentSolution = [];
+
+    function newGame() {
+        const mode = document.getElementById('gridMode').value;
+        const size = parseInt(document.getElementById('gridSize').value);
+        const dicasPct = parseInt(document.getElementById('acolhimento').value) / 100;
+        const gridElement = document.getElementById('grid');
+        const message = document.getElementById('message');
+        
+        message.innerText = "";
+        gridElement.innerHTML = "";
+        
+        const rows = (mode === 'linear') ? 1 : size;
+        const cols = size;
+        
+        gridElement.style.gridTemplateColumns = `repeat(${cols}, 48px)`;
+        currentSolution = [];
+
+        // Gerar solução previsível (padrão lógico estável para TEA)
+        for (let r = 0; r < rows; r++) {
+            let rowColors = [];
+            for (let c = 0; c < cols; c++) {
+                rowColors.push(colors[(r + c) % colors.length]);
+            }
+            currentSolution.push(rowColors);
+        }
+
+        // Criar as células
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                
+                const correctColor = currentSolution[r][c];
+
+                // Lógica de Dicas (Acolhimento)
+                if (Math.random() < dicasPct) {
+                    cell.style.backgroundColor = correctColor;
+                    cell.classList.add('fixed');
+                }
+
+                cell.onclick = () => {
+                    if (!cell.classList.contains('fixed')) {
+                        cell.style.backgroundColor = selectedColor;
+                        checkVictory();
+                    }
+                };
+                gridElement.appendChild(cell);
+            }
+        }
+    }
+
+    function createPalette() {
+        const palette = document.getElementById('palette');
+        colors.forEach((color, index) => {
+            const btn = document.createElement('div');
+            btn.classList.add('color-btn');
+            btn.style.backgroundColor = color;
+            if (index === 0) btn.classList.add('active');
+            btn.onclick = () => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedColor = color;
+            };
+            palette.appendChild(btn);
+        });
+    }
+
+    function checkVictory() {
+        const cells = document.querySelectorAll('.cell');
+        const flatSolution = currentSolution.flat();
+        let win = true;
+
+        cells.forEach((cell, i) => {
+            const cellColor = rgbToHex(cell.style.backgroundColor);
+            if (cellColor !== flatSolution[i].toUpperCase()) {
+                win = false;
+            }
+        });
+
+        if (win) {
+            document.getElementById('message').innerText = "✨ PARABÉNS! Lógica Concluída! ✨";
+        }
+    }
+
+    function rgbToHex(rgb) {
+        if (!rgb || rgb === "") return "";
+        const parts = rgb.match(/\d+/g);
+        const hex = "#" + parts.map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+        return hex.toUpperCase();
+    }
+
+    createPalette();
+    newGame();
+</script>
+
+</body>
+</html>
